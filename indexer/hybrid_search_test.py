@@ -152,18 +152,19 @@ def keyword_only_search(query):
 
 # Setup and test
 if __name__ == "__main__":
-    print("Setting up hybrid search...")
-    create_simple_hybrid_index()
-    add_combined_embeddings()
+    # print("Setting up hybrid search...")
+    # create_simple_hybrid_index()
+    # add_combined_embeddings()
     
     print("\n" + "="*60)
     print("🧪 TESTING DIFFERENT SEARCH TYPES")
     
     test_queries = [
-        "gaming TV",
-        "movie watching", 
-        "77 inch OLED",
-        "affordable large screen"
+        "OELD"
+        # "gaming TV",
+        # "movie watching", 
+        # "77 inch OLED",
+        # "affordable large screen"
     ]
     
     for query in test_queries:
