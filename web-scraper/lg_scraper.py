@@ -26,7 +26,35 @@ class LGProductScraper:
         self.category = category_name
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
         self.data = []
-
+        
+    def close_cookie_popup(self):
+        """쿠키 동의 팝업 닫기"""
+        try:
+            # 일반적인 쿠키 동의 버튼들
+            popup_selectors = [
+                "#transcend-consent-manager",
+                "[id*='consent']",
+                "[class*='cookie'] button",
+                "[class*='consent'] button",
+                "button[aria-label*='Accept']",
+                "button[aria-label*='Close']"
+            ]
+            
+            for selector in popup_selectors:
+                try:
+                    popup = WebDriverWait(self.driver, 2).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+                    )
+                    popup.click()
+                    print("쿠키 팝업 닫음")
+                    time.sleep(1)
+                    break
+                except:
+                    continue
+                    
+        except:
+            print("쿠키 팝업 없음")
+            
     def open_page(self):
         self.driver.get(self.url)
 
@@ -85,22 +113,31 @@ class LGProductScraper:
                 print(f"[{self.category}] All products loaded.")
                 break
 
-    def extract_product_info(self, card, size) -> dict:
+    def extract_product_info(self, card, size = None) -> dict:
         """카드에서 제품 정보 추출"""
+        product_name = self.get_product_name(card)
+        
+        if self.category == "Monitors":
+            try:
+                size = int(product_name[:2])
+            except (ValueError, TypeError):
+                size = None
+                
         try:
             product_info = {
                 'size': size,
                 'product_url': self.get_product_url(card),
-                'product_name': self.get_product_name(card),
+                'product_name': product_name,
                 'sku': self.get_product_sku(card),
                 'price': self.get_product_price(card)
             }
+            print("product info: ", product_info)
             return product_info
         except Exception as e:
             print(f"    정보 추출 실패: {e}")
             return None
 
-    def get_product_url(self, card):
+    def get_product_url(self, card) -> str:
         """제품 URL 추출"""
         try:
             link = card.find_element(By.CSS_SELECTOR, "a[href*='/us/']").get_attribute('href')
@@ -108,7 +145,7 @@ class LGProductScraper:
         except:
             return "N/A"
 
-    def get_product_name(self, card):
+    def get_product_name(self, card) -> str:
         """제품명 추출"""
         try:
             name_selectors = [
@@ -261,6 +298,8 @@ class LGProductScraper:
             return 0  
     
     def parse_products(self):
+        # 팝업 닫기
+        self.close_cookie_popup()
         
         basic_products_info = []
     
@@ -274,17 +313,31 @@ class LGProductScraper:
             # 사이즈 버튼들 찾기
             buttons = card.find_elements(By.CSS_SELECTOR, ".MuiChip-clickable")
             
-            for button in buttons:
+            if buttons: 
+                for button in buttons:
+                    try:
+                        """Extract numeric size from text like '83"' -> 83"""
+                        size_text = button.text.strip()
+                        size = self.extract_size_number(size_text)
+                        
+                        # 버튼 클릭
+                        button.click()
+                        time.sleep(1)
+                        
+                        basic_product = self.extract_product_info(card, size)
+
+                        if basic_product:
+                            basic_products_info.append(basic_product)
+                            # print(f"  {size}: {product_info['product_name']} - ${product_info['price']}")
+                        
+                    except Exception as e:
+                        print(f"버튼 처리 실패: {e}")
+                        continue
+                    
+            else:
                 try:
-                    """Extract numeric size from text like '83"' -> 83"""
-                    size_text = button.text.strip()
-                    size = self.extract_size_number(size_text)
                     
-                    # 버튼 클릭
-                    button.click()
-                    time.sleep(1)
-                    
-                    basic_product = self.extract_product_info(card, size)
+                    basic_product = self.extract_product_info(card)
 
                     if basic_product:
                         basic_products_info.append(basic_product)
@@ -293,15 +346,8 @@ class LGProductScraper:
                 except Exception as e:
                     print(f"버튼 처리 실패: {e}")
                     continue
-                if len(basic_products_info) > 1:
-                    print("\n2단계: 상세 정보 수집")
-                    detailed_products_info = self.scrape_product_details(basic_products_info)
-                                
-                    # JSON 파일로 저장
-                    self.save_products_to_json(detailed_products_info)
-                    
-                    print(f"\n총 {len(detailed_products_info)}개 제품 정보 수집 완료")
-                    return detailed_products_info
+                
+
         # 2. 각 제품의 상세 정보 수집
         print("\n2단계: 상세 정보 수집")
         detailed_products_info = self.scrape_product_details(basic_products_info)
@@ -327,6 +373,7 @@ class LGProductScraper:
         """
         final_data = {
         "metadata": {
+            "Type": self.category,
             "units": {"price_currency": "USD", "size_unit": "inches"},
             "total_products": len(products_info)
         },

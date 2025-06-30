@@ -1,3 +1,4 @@
+# backend/app/rag_main.py
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import AsyncElasticsearch
@@ -86,13 +87,21 @@ async def retrieve_products(query: str, websocket) -> List[Dict]:
     await websocket.send_text(json.dumps({
         "type": "thinking_detail",
         "phase": "retrieve",
-        "thinking": f"Retrieving products using hybrid search (keyword + semantic). I'm searching for '{query}' across product names, features, and descriptions to cast a wide net for relevant products.",
+        "thinking": f"Starting the retrieval phase for '{query}'. I'm analyzing the query to understand what the user is looking for. Let me break this down: I need to identify product categories, price constraints, size requirements, and specific features mentioned.",
         "timestamp": datetime.now().isoformat()
     }))
     
     try:
         # Quick keyword analysis for better search
         keywords = extract_keywords(query)
+        
+        await websocket.send_text(json.dumps({
+            "type": "thinking_detail",
+            "phase": "retrieve",
+            "thinking": f"I've extracted key search terms: {keywords}. Now I'll use a multi-strategy approach: first a precise hybrid search combining keyword matching with semantic similarity, then fallback to broader searches if needed. This ensures I don't miss relevant products.",
+            "result": {"keywords_found": keywords},
+            "timestamp": datetime.now().isoformat()
+        }))
         
         # Hybrid search with multiple fallbacks
         search_strategies = [
@@ -124,14 +133,41 @@ async def retrieve_products(query: str, websocket) -> List[Dict]:
         all_products = []
         for i, strategy in enumerate(search_strategies):
             try:
+                await websocket.send_text(json.dumps({
+                    "type": "thinking_detail",
+                    "phase": "retrieve",
+                    "thinking": f"Executing search strategy {i+1}: {'Precise hybrid search' if i==0 else 'Keyword fallback' if i==1 else 'Broad search'}. This gives me multiple chances to find relevant products even if the initial search is too restrictive.",
+                    "timestamp": datetime.now().isoformat()
+                }))
+                
                 response = await es.search(index="products", body=strategy)
                 strategy_products = [format_product(hit["_source"]) for hit in response["hits"]["hits"]]
                 all_products.extend(strategy_products)
                 
+                await websocket.send_text(json.dumps({
+                    "type": "thinking_detail",
+                    "phase": "retrieve",
+                    "thinking": f"Strategy {i+1} returned {len(strategy_products)} products. Total products so far: {len(all_products)}. I'll continue searching until I have a good selection to work with.",
+                    "result": {"strategy_results": len(strategy_products), "total": len(all_products)},
+                    "timestamp": datetime.now().isoformat()
+                }))
+                
                 if len(all_products) >= 15:  # Enough products found
+                    await websocket.send_text(json.dumps({
+                        "type": "thinking_detail",
+                        "phase": "retrieve",
+                        "thinking": "Great! I've found enough products to work with. Now I'll remove duplicates and prepare for the reranking phase.",
+                        "timestamp": datetime.now().isoformat()
+                    }))
                     break
                     
             except Exception as e:
+                await websocket.send_text(json.dumps({
+                    "type": "thinking_detail",
+                    "phase": "retrieve",
+                    "thinking": f"Strategy {i+1} encountered an issue: {str(e)}. Moving to next strategy.",
+                    "timestamp": datetime.now().isoformat()
+                }))
                 continue
         
         # Remove duplicates by SKU
@@ -145,8 +181,8 @@ async def retrieve_products(query: str, websocket) -> List[Dict]:
         await websocket.send_text(json.dumps({
             "type": "thinking_detail",
             "phase": "retrieve",
-            "thinking": f"Retrieved {len(unique_products)} unique products from {len(search_strategies)} search strategies. Now I'll rerank these based on semantic relevance to the specific query.",
-            "result": {"retrieved": len(unique_products)},
+            "thinking": f"Retrieval complete! I found {len(all_products)} total products but after removing duplicates, I have {len(unique_products)} unique products. These range from direct matches to broader category matches. Now I need to rank them by relevance to your specific query.",
+            "result": {"retrieved": len(unique_products), "duplicates_removed": len(all_products) - len(unique_products)},
             "timestamp": datetime.now().isoformat()
         }))
         
@@ -156,7 +192,7 @@ async def retrieve_products(query: str, websocket) -> List[Dict]:
         await websocket.send_text(json.dumps({
             "type": "thinking_detail",
             "phase": "retrieve",
-            "thinking": f"Error during retrieval: {str(e)}. Falling back to basic search.",
+            "thinking": f"Retrieval encountered a major error: {str(e)}. This might be due to Elasticsearch connectivity issues. I'll try to provide a fallback response.",
             "timestamp": datetime.now().isoformat()
         }))
         return []
@@ -193,7 +229,7 @@ async def rerank_products(query: str, products: List[Dict], websocket) -> List[D
     await websocket.send_text(json.dumps({
         "type": "thinking_detail",
         "phase": "rerank",
-        "thinking": f"Reranking {len(products)} products using AI to determine the best matches for '{query}'. I'll score each product based on relevance, features, and user intent.",
+        "thinking": f"Now I need to rerank these {len(products)} products to find the best matches for '{query}'. The initial search cast a wide net, but now I need to be more precise. I'll analyze each product's relevance, considering factors like product type match, feature alignment, price appropriateness, and overall suitability for the user's needs.",
         "timestamp": datetime.now().isoformat()
     }))
     
@@ -204,6 +240,14 @@ async def rerank_products(query: str, products: List[Dict], websocket) -> List[D
             summary = f"{i}: {product['product_name']} - ${product.get('price', 'N/A')} - {product.get('key_features', '')[:100]}"
             product_summaries.append(summary)
         
+        await websocket.send_text(json.dumps({
+            "type": "thinking_detail",
+            "phase": "rerank",
+            "thinking": f"I've prepared summaries of all {len(products)} products for AI analysis. Each summary includes the product name, price, and key features. Now I'll send this to a lightweight AI model to score relevance. The AI will consider how well each product matches the user's specific requirements.",
+            "result": {"products_to_rank": len(products)},
+            "timestamp": datetime.now().isoformat()
+        }))
+        
         # Lightweight reranking prompt
         rerank_prompt = f"""Rank these products by relevance to: "{query}"
 Products:
@@ -211,6 +255,13 @@ Products:
 
 Return only numbers in order of relevance (most relevant first):
 Example: 3,1,7,2,5"""
+
+        await websocket.send_text(json.dumps({
+            "type": "thinking_detail",
+            "phase": "rerank",
+            "thinking": "Sending the ranking request to the AI model. I'm using a streamlined approach where the AI just returns numbers in order of relevance. This is much faster than asking for detailed explanations while still getting intelligent ranking.",
+            "timestamp": datetime.now().isoformat()
+        }))
 
         response = await openai_client.chat.completions.create(
             model="gpt-3.5-turbo",  # Faster model
@@ -224,6 +275,15 @@ Example: 3,1,7,2,5"""
         
         # Parse ranking
         ranking_text = response.choices[0].message.content.strip()
+        
+        await websocket.send_text(json.dumps({
+            "type": "thinking_detail",
+            "phase": "rerank",
+            "thinking": f"AI ranking complete! The model returned: '{ranking_text}'. Now I'm parsing these rankings and reordering the products accordingly. This puts the most relevant products first, which will give you much better recommendations.",
+            "result": {"ai_ranking": ranking_text},
+            "timestamp": datetime.now().isoformat()
+        }))
+        
         try:
             rankings = [int(x.strip()) for x in ranking_text.split(',')]
             
@@ -238,18 +298,23 @@ Example: 3,1,7,2,5"""
             for i, product in enumerate(products):
                 if i not in ranked_indices:
                     reranked.append(product)
+            
+            await websocket.send_text(json.dumps({
+                "type": "thinking_detail",
+                "phase": "rerank",
+                "thinking": f"Reranking successful! The new order prioritizes products that best match your query. The top product is now '{reranked[0]['product_name'] if reranked else 'None'}', which the AI determined is the most relevant to your needs. This reordering should significantly improve the quality of recommendations.",
+                "result": {"reranked": len(reranked), "top_product": reranked[0]['product_name'] if reranked else 'None'},
+                "timestamp": datetime.now().isoformat()
+            }))
                     
-        except Exception:
-            # If parsing fails, use original order
+        except Exception as parse_error:
+            await websocket.send_text(json.dumps({
+                "type": "thinking_detail",
+                "phase": "rerank",
+                "thinking": f"Had trouble parsing the AI ranking response: {str(parse_error)}. The AI returned '{ranking_text}' which doesn't match the expected format. I'll keep the original search order, which is still relevance-based from Elasticsearch.",
+                "timestamp": datetime.now().isoformat()
+            }))
             reranked = products
-        
-        await websocket.send_text(json.dumps({
-            "type": "thinking_detail",
-            "phase": "rerank",
-            "thinking": f"Reranking complete. Reordered products based on relevance scoring. Top product is now: {reranked[0]['product_name'] if reranked else 'None'}",
-            "result": {"reranked": len(reranked)},
-            "timestamp": datetime.now().isoformat()
-        }))
         
         return reranked
         
@@ -257,7 +322,7 @@ Example: 3,1,7,2,5"""
         await websocket.send_text(json.dumps({
             "type": "thinking_detail",
             "phase": "rerank",
-            "thinking": f"Reranking failed: {str(e)}. Using original order.",
+            "thinking": f"Reranking encountered an error: {str(e)}. This might be due to API issues or network problems. I'll proceed with the original Elasticsearch ranking, which is still quite good for most queries.",
             "timestamp": datetime.now().isoformat()
         }))
         return products
@@ -271,7 +336,7 @@ async def generate_rag_response(query: str, products: List[Dict], chat_history: 
     await websocket.send_text(json.dumps({
         "type": "thinking_detail",
         "phase": "generate",
-        "thinking": f"Analyzing {len(products)} products in detail to provide specific recommendations. I'll examine specs, prices, and features to match your needs exactly.",
+        "thinking": f"Now for the final RAG (Retrieve-Augment-Generate) step. I have {len(products)} reranked products, and I need to analyze their actual specifications to provide you with specific, detailed recommendations. This is where the magic happens - I'll read through the product details and match them to your exact needs.",
         "timestamp": datetime.now().isoformat()
     }))
     
@@ -279,6 +344,13 @@ async def generate_rag_response(query: str, products: List[Dict], chat_history: 
         # Create detailed product context (RAG)
         top_products = products[:5]  # Limit context size
         product_context = ""
+        
+        await websocket.send_text(json.dumps({
+            "type": "thinking_detail",
+            "phase": "generate",
+            "thinking": f"I'm focusing on the top {len(top_products)} products for detailed analysis. Let me examine each one: their specifications, pricing, features, and how they match your requirements. This detailed context will help me give you much more specific and accurate recommendations than generic responses.",
+            "timestamp": datetime.now().isoformat()
+        }))
         
         for i, product in enumerate(top_products, 1):
             context = f"""Product {i}: {product['product_name']}
@@ -290,6 +362,14 @@ async def generate_rag_response(query: str, products: List[Dict], chat_history: 
 """
             product_context += context
         
+        await websocket.send_text(json.dumps({
+            "type": "thinking_detail",
+            "phase": "generate",
+            "thinking": f"Product analysis complete. I've compiled detailed specs for {len(top_products)} products including their prices, sizes, and key features. Now I'm sending this rich context to the AI along with your original query to generate a personalized recommendation that considers the actual product specifications.",
+            "result": {"products_analyzed": len(top_products), "context_length": len(product_context)},
+            "timestamp": datetime.now().isoformat()
+        }))
+        
         # Lightweight RAG prompt
         rag_prompt = f"""Based on these specific products:
 
@@ -298,6 +378,13 @@ async def generate_rag_response(query: str, products: List[Dict], chat_history: 
 User query: "{query}"
 
 Provide a brief, helpful recommendation (2-3 sentences max). Focus on the best match and why."""
+
+        await websocket.send_text(json.dumps({
+            "type": "thinking_detail",
+            "phase": "generate",
+            "thinking": "Generating your personalized recommendation now. The AI is reading through all the product specifications and matching them against your specific requirements. This should result in a much more accurate and helpful recommendation than generic product descriptions.",
+            "timestamp": datetime.now().isoformat()
+        }))
 
         response = await openai_client.chat.completions.create(
             model="gpt-3.5-turbo",  # Fast model
@@ -314,8 +401,8 @@ Provide a brief, helpful recommendation (2-3 sentences max). Focus on the best m
         await websocket.send_text(json.dumps({
             "type": "thinking_detail",
             "phase": "generate",
-            "thinking": f"Generated detailed recommendation based on actual product specs. I analyzed {len(top_products)} products and provided specific guidance on the best options.",
-            "result": {"response_length": len(rag_response)},
+            "thinking": f"Perfect! I've generated a detailed recommendation based on the actual product specifications. The AI analyzed {len(top_products)} products and provided specific guidance tailored to your query '{query}'. This recommendation is based on real product data, not generic descriptions, so it should be much more accurate and helpful.",
+            "result": {"response_generated": True, "response_length": len(rag_response), "based_on_products": len(top_products)},
             "timestamp": datetime.now().isoformat()
         }))
         
@@ -325,10 +412,10 @@ Provide a brief, helpful recommendation (2-3 sentences max). Focus on the best m
         await websocket.send_text(json.dumps({
             "type": "thinking_detail",
             "phase": "generate",
-            "thinking": f"RAG generation failed: {str(e)}. Providing basic response.",
+            "thinking": f"RAG generation encountered an issue: {str(e)}. This might be due to API limits or network issues. I'll provide a basic recommendation based on the reranked results, which should still be quite helpful since the products are properly ordered by relevance.",
             "timestamp": datetime.now().isoformat()
         }))
-        return f"Found {len(products)} products for '{query}'. The top recommendation is {products[0]['product_name']}."
+        return f"Found {len(products)} products for '{query}'. Based on the reranking, the top recommendation is {products[0]['product_name']} at ${products[0].get('price', 'N/A')}."
 
 def format_product(source: dict):
     """Format product data"""

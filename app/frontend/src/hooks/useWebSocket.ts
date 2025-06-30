@@ -12,7 +12,8 @@ export const useWebSocket = (sessionId: string) => {
   const ws = useRef<WebSocket | null>(null);
 
   const connect = useCallback(() => {
-    ws.current = new WebSocket(`ws://localhost:8000/ws/${sessionId}`);
+    ws.current = new WebSocket(`wss://cfcb-142-105-49-80.ngrok-free.app/ws/${sessionId}`);
+    // ws.current = new WebSocket(`ws://localhost:8000/ws/${sessionId}`);
     
     ws.current.onopen = () => {
       setIsConnected(true);

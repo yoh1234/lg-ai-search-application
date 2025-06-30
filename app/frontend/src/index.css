@@ -206,30 +206,189 @@ body {
   background: #1d4ed8;
 }
 
-/* Thinking Indicator */
+/* Preserved Thinking Process in Chat Messages */
+.thinking-summary {
+  margin-top: 12px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+.thinking-toggle {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+}
+
+.thinking-toggle:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.thinking-details-preserved {
+  margin-top: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.thinking-header {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thinking-completion-badge {
+  background: #d1fae5;
+  color: #065f46;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.thinking-steps-preserved {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.thinking-step-preserved {
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.thinking-step-preserved.phase-step {
+  border-left: 3px solid #f59e0b;
+  background: #fffbeb;
+}
+
+.thinking-step-preserved.detail-step {
+  border-left: 3px solid #0ea5e9;
+  background: #f0f9ff;
+}
+
+.phase-start-preserved {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phase-start-preserved .phase-content strong {
+  color: #92400e;
+  font-size: 12px;
+  text-transform: capitalize;
+  display: block;
+}
+
+.phase-start-preserved .phase-content p {
+  color: #78350f;
+  font-size: 11px;
+  margin: 2px 0 0 0;
+}
+
+.thinking-detail-preserved {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.thinking-detail-preserved .thinking-bullet {
+  color: #0ea5e9;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.thinking-detail-preserved .thinking-paragraph {
+  color: #0c4a6e;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.thinking-detail-preserved .thinking-result {
+  color: #059669;
+  font-size: 10px;
+  margin-top: 3px;
+  padding: 2px 6px;
+  background: #d1fae5;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.thinking-step-preserved .thinking-timestamp {
+  color: #6b7280;
+  font-size: 9px;
+  text-align: right;
+  margin-top: 3px;
+}
+
+/* Enhanced Thinking Indicator */
 .thinking-indicator {
+  padding: 16px;
+  margin: 8px 0;
+  background: linear-gradient(145deg, #f8fafc, #e2e8f0);
+  border-radius: 12px;
+  border-left: 4px solid #3b82f6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   justify-content: flex-start;
-  margin-bottom: 1rem;
+  transition: all 0.5s ease;
+}
+
+.thinking-indicator.completed {
+  border-left-color: #10b981;
+  background: linear-gradient(145deg, #f0fdf4, #dcfce7);
 }
 
 .thinking-content {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 0.75rem;
-  padding: 1rem;
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
 }
 
 .thinking-spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid #2563eb;
-  border-top: 2px solid transparent;
+  border: 2px solid #e5e7eb;
+  border-top: 2px solid #3b82f6;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.thinking-spinner.completed {
+  border: 2px solid #10b981;
+  animation: none;
+  background: #10b981;
+}
+
+.completion-check {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
 }
 
 @keyframes spin {
@@ -237,8 +396,194 @@ body {
   100% { transform: rotate(360deg); }
 }
 
+.thinking-details {
+  flex: 1;
+  min-width: 0;
+}
+
 .thinking-text {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.current-phase {
+  background: #dbeafe;
+  padding: 6px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border-left: 3px solid #3b82f6;
+}
+
+.current-phase strong {
   color: #1e40af;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.completion-summary {
+  background: #d1fae5;
+  padding: 6px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border-left: 3px solid #10b981;
+}
+
+.completion-summary strong {
+  color: #065f46;
+  font-size: 13px;
+}
+
+.thinking-steps {
+  margin-top: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.thinking-step {
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.phase-step {
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+}
+
+.detail-step {
+  background: #f0f9ff;
+  border-left: 3px solid #0ea5e9;
+}
+
+.phase-start {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.phase-icon {
+  font-size: 16px;
+}
+
+.phase-content strong {
+  color: #92400e;
+  font-size: 13px;
+  text-transform: capitalize;
+  display: block;
+}
+
+.phase-content p {
+  color: #78350f;
+  font-size: 12px;
+  margin: 2px 0 0 0;
+}
+
+.thinking-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.thinking-bullet {
+  color: #0ea5e9;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.thinking-content {
+  flex: 1;
+}
+
+.thinking-paragraph {
+  color: #0c4a6e;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.thinking-result {
+  color: #059669;
+  font-size: 11px;
+  margin-top: 4px;
+  padding: 2px 6px;
+  background: #d1fae5;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.thinking-timestamp {
+  color: #6b7280;
+  font-size: 10px;
+  text-align: right;
+  margin-top: 4px;
+}
+
+.thinking-progress {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #d1d5db;
+  animation: pulse 1.5s infinite;
+  transition: all 0.3s ease;
+}
+
+.dot.active {
+  background: #3b82f6;
+}
+
+.dot.completed {
+  background: #10b981;
+  animation: none;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.completion-text {
+  font-size: 11px;
+  color: #059669;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse {
+  0%, 20% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+  80%, 100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Chat Input */
@@ -354,80 +699,16 @@ body {
   .send-button {
     width: 100%;
   }
-}
-
-/* Thinking Steps Styles */
-.thinking-details {
-  width: 100%;
-}
-
-.thinking-steps {
-  margin-top: 1rem;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.thinking-step {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: white;
-  border-radius: 0.5rem;
-  border-left: 4px solid #3b82f6;
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.phase-start {
-  border-left-color: #10b981;
-}
-
-.phase-start strong {
-  color: #059669;
-  text-transform: capitalize;
-  font-size: 0.9rem;
-}
-
-.thinking-detail {
-  border-left-color: #3b82f6;
-}
-
-.thinking-phase {
-  font-size: 0.8rem;
-  color: #3b82f6;
-  font-weight: 600;
-  text-transform: capitalize;
-  margin-bottom: 0.5rem;
-}
-
-.thinking-paragraph {
-  color: #1f2937;
-  line-height: 1.5;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-
-.thinking-result {
-  font-size: 0.8rem;
-  color: #6b7280;
-  background: #f9fafb;
-  padding: 0.5rem;
-  border-radius: 0.25rem;
-  margin-top: 0.5rem;
-}
-
-.thinking-timestamp {
-  font-size: 0.7rem;
-  color: #9ca3af;
-  text-align: right;
-  margin-top: 0.25rem;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+  
+  .thinking-indicator {
+    padding: 12px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  
+  .thinking-content {
+    gap: 8px;
+  }
+  
+  .thinking-steps {
+    max-height: 150px;
   }
 }
