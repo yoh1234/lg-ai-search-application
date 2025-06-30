@@ -11,5 +11,4 @@ categories = {
 for cat_name, url in categories.items():
     scraper = LGProductScraper(category_url=url, category_name=cat_name)
     scraper.scrape()
-    # scraper.save_as_json(f"lg_{cat_name.lower()}.json")
     scraper.close()

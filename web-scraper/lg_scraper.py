@@ -145,7 +145,7 @@ class LGProductScraper:
         except:
             return "N/A"
 
-    def get_product_price(self, card):
+    def get_product_price(self, card) -> float:
         """가격 추출"""
         try:
             price_selectors = [
@@ -159,7 +159,7 @@ class LGProductScraper:
                     price_text = price_element.text.strip()
                     # "$2,199.99" -> "2199.99"
                     price_clean = price_text.replace('$', '').replace(',', '').split()[0]
-                    return price_clean
+                    return float(price_clean)
                 except:
                     continue
             return "N/A"
@@ -253,6 +253,13 @@ class LGProductScraper:
             print(f"    특징 추출 실패: {e}")
             return []
     
+    def extract_size_number(self, size_text):
+        """Extract numeric size from text like '83"' -> 83"""
+        try:
+            return int(size_text.replace('"', '').replace("'", ''))
+        except ValueError:
+            return 0  
+    
     def parse_products(self):
         
         basic_products_info = []
@@ -269,7 +276,9 @@ class LGProductScraper:
             
             for button in buttons:
                 try:
-                    size = button.text.strip()
+                    """Extract numeric size from text like '83"' -> 83"""
+                    size_text = button.text.strip()
+                    size = self.extract_size_number(size_text)
                     
                     # 버튼 클릭
                     button.click()
@@ -282,9 +291,9 @@ class LGProductScraper:
                         # print(f"  {size}: {product_info['product_name']} - ${product_info['price']}")
                     
                 except Exception as e:
-                    print(f"  버튼 처리 실패: {e}")
+                    print(f"버튼 처리 실패: {e}")
                     continue
-                if len(basic_product) > 1:
+                if len(basic_products_info) > 1:
                     print("\n2단계: 상세 정보 수집")
                     detailed_products_info = self.scrape_product_details(basic_products_info)
                                 
@@ -293,7 +302,6 @@ class LGProductScraper:
                     
                     print(f"\n총 {len(detailed_products_info)}개 제품 정보 수집 완료")
                     return detailed_products_info
-        
         # 2. 각 제품의 상세 정보 수집
         print("\n2단계: 상세 정보 수집")
         detailed_products_info = self.scrape_product_details(basic_products_info)
@@ -306,27 +314,35 @@ class LGProductScraper:
 
     def scrape(self):
         self.open_page()
-        # self.click_view_all()
-        # self.click_load_more()
+        self.click_view_all()
+        self.click_load_more()
         self.parse_products()
 
-    def save_products_to_json(self, products):
+    def save_products_to_json(self, products_info: list) -> None:
+        """
+        Add metadata structure to JSON output for better AI/search performance.
+        
+        Args:
+            products_info (list): List of basic product dictionaries
+        """
+        final_data = {
+        "metadata": {
+            "units": {"price_currency": "USD", "size_unit": "inches"},
+            "total_products": len(products_info)
+        },
+        "products": products_info
+        }
         """제품 정보를 JSON 파일로 저장"""
         try:
             filename = f"{self.category}_products.json"
             
             with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(products, f, ensure_ascii=False, indent=2)
+                json.dump(final_data, f, ensure_ascii=False, indent=2)
             
-            print(f"제품 정보가 {filename}에 저장되었습니다. ({len(products)}개 제품)")
+            print(f"제품 정보가 {filename}에 저장되었습니다. ({len(products_info)}개 제품)")
             
         except Exception as e:
             print(f"JSON 저장 실패: {e}")
-        
-    def save_as_json(self, filename: str):
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, ensure_ascii=False, indent=2)
-        print(f"Saved {len(self.data)} items to {filename}")
 
     def close(self):
         self.driver.quit()
