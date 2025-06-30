@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 스크래핑 결과물
+*.json
+*.csv
+*.pkl
+chromedriver*
+
+# 환경설정
+.env
+config.py
+
+# 로그
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
