@@ -13,6 +13,7 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   products?: Product[];
+  thinkingSteps?: any[];  // 이 줄 추가!
 }
 
 export interface ThinkingStep {

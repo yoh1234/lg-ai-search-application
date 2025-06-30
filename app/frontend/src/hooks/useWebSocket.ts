@@ -1,3 +1,4 @@
+// frontend/src/hooks/useWebSocket.ts
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatMessage, Product, ThinkingStep } from '../types';
 
@@ -6,6 +7,7 @@ export const useWebSocket = (sessionId: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [currentThinking, setCurrentThinking] = useState<string>('');
+  const [thinkingSteps, setThinkingSteps] = useState<any[]>([]);
   
   const ws = useRef<WebSocket | null>(null);
 
@@ -14,15 +16,34 @@ export const useWebSocket = (sessionId: string) => {
     
     ws.current.onopen = () => {
       setIsConnected(true);
+      console.log('WebSocket connected');
     };
     
     ws.current.onmessage = (event) => {
       const data = JSON.parse(event.data);
+      console.log('Received:', data);
       
-      if (data.type === 'thinking') {
+      if (data.type === 'thinking_start') {
         setIsThinking(true);
         setCurrentThinking(data.description);
-      } else if (data.type === 'result') {
+        setThinkingSteps(prev => [...prev, {
+          type: 'phase_start',
+          phase: data.phase,
+          description: data.description,
+          timestamp: data.timestamp
+        }]);
+      } 
+      else if (data.type === 'thinking_detail') {
+        setCurrentThinking(data.thinking);
+        setThinkingSteps(prev => [...prev, {
+          type: 'thinking_detail',
+          phase: data.phase,
+          thinking: data.thinking,
+          result: data.result,
+          timestamp: data.timestamp
+        }]);
+      }
+      else if (data.type === 'result') {
         setIsThinking(false);
         setCurrentThinking('');
         
@@ -30,16 +51,24 @@ export const useWebSocket = (sessionId: string) => {
           role: 'assistant',
           content: data.explanation,
           timestamp: new Date().toISOString(),
-          products: data.products
+          products: data.products,
+          thinkingSteps: [...thinkingSteps] // Save thinking steps with the message
         };
         
         setMessages(prev => [...prev, assistantMessage]);
+        setThinkingSteps([]); // Clear for next query
       }
     };
     
     ws.current.onclose = () => {
       setIsConnected(false);
-      setTimeout(connect, 3000); // reconnect
+      console.log('WebSocket disconnected');
+      setTimeout(connect, 3000);
+    };
+    
+    ws.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setIsConnected(false);
     };
   }, [sessionId]);
 
@@ -61,6 +90,7 @@ export const useWebSocket = (sessionId: string) => {
       };
       
       setMessages(prev => [...prev, userMessage]);
+      setThinkingSteps([]); // Clear previous thinking steps
       
       ws.current.send(JSON.stringify({
         type: 'chat',
@@ -74,6 +104,7 @@ export const useWebSocket = (sessionId: string) => {
     isConnected,
     isThinking,
     currentThinking,
+    thinkingSteps,
     sendMessage
   };
 };
